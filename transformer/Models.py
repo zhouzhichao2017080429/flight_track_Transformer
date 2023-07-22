@@ -12,9 +12,10 @@ __author__ = "Cheng XinLong, Oxalate-c"
 
 def get_subsequent_mask(seq):
     ''' For masking out the subsequent info. '''
-    sz_b, len_s = seq.size()
+    # sz_b, len_s = seq.size()
+    sz_b, len_s = seq.shape
     subsequent_mask = (1 - torch.triu(
-        torch.ones((1, len_s, len_s), device=seq.device), diagonal=1)).bool()
+        torch.ones((1, len_s, len_s)), diagonal=1)).bool()
     return subsequent_mask
 
 
@@ -161,16 +162,18 @@ class Transformer(nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self,input_data,device):
+    def forward(self,input_data,truth):
         input_data=self.fpn(input_data).squeeze(-1)
-        src_seq=input_data[:,:-1].to(device).to(torch.float32)
-        trg_seq=input_data[:,1:].to(device).to(torch.float32)
+        # src_seq=input_data[:,:-1].to(device).to(torch.float32)
+        src_seq = input_data
+        # trg_seq=truth.squeeze(-1)
+        trg_seq = truth.reshape(truth.shape[0], -1)
         trg_mask = get_subsequent_mask(trg_seq)
         enc_output = self.encoder(src_seq)
         dec_output = self.decoder(trg_seq, trg_mask, enc_output)
         trajectory_logit = self.trg_word_prj(dec_output)
         trajectory_logit =self.fdn(trajectory_logit)
-
+        trajectory_logit = trajectory_logit.squeeze()
         return trajectory_logit
 
 class MLP(nn.Module):
